@@ -1,0 +1,8 @@
+n_tracks: 4
+programs: [0, 0, 25, 33]
+is_drums: [True, False, False, False]
+track_names: ["Drums", "Piano", "Guitar", "Bass"]
+n_measures: 4
+beat_resolution: 4
+lowest_pitch: 24
+n_pitches: 72
