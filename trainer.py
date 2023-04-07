@@ -7,7 +7,6 @@ from loss.criterion import compute_gradient_penalty
 
 def train_one_step(generator, discriminator, g_optimizer, d_optimizer, real_samples, latent_dim, batch_size, device):
     latent = torch.randn(batch_size, latent_dim)
-    real_samples = real_samples[0]
     fake_samples = generator(latent)
 
     # Train the discriminator network
