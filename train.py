@@ -1,9 +1,9 @@
 import os
 import argparse
 import numpy as np
-import matplotlib.pyplot as plt
 from tqdm import tqdm
 import pypianoroll
+from pypianoroll import Multitrack
 
 import torch
 from torch import nn
@@ -55,11 +55,12 @@ def train(args):
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     process_bar = tqdm(total=args.steps)
     file_check_points = open(args.file_checkpoints)
+    tempo_array = np.full((4 * 4 * 4 * args.beat_resolution, 1), args.tempo)
     best_d_loss = 1000.0
     best_g_loss = 1000.0
 
     # Create dataset and data_loader
-    data = data_process(
+    muse_data = data_process(
         root_dir=args.data_root_dir,
         n_measures=args.n_measures,
         beat_resolution=args.beat_resolution,
@@ -67,7 +68,7 @@ def train(args):
         lowest_pitch=args.lowest_pitch,
         n_pitches=args.n_pitches
         )
-    dataset = MuseGANDataset(data)
+    dataset = MuseGANDataset(muse_data)
     data_loader = DataLoader(dataset, args.batch_size, drop_last=True, shuffle=True)
 
     # Create generator and discriminator network
@@ -108,24 +109,31 @@ def train(args):
                 generator.eval()
                 with torch.no_grad():
                     torch.save(generator, 'weights/generator_v3.pt')
-                if step % 500 == 0:
-                    process_bar.set_description_str(f'd_loss = {round(d_loss, 2)}, g_loss = {round(g_loss, 2)}')
-                    generator.eval()
-                    sample_latent = torch.rand(args.batch_size, args.latent_dim)
-                    with torch.no_grad():
-                        samples = generator(sample_latent).cpu().detach().numpy()
-                    samples = samples.transpose(1, 0, 2, 3).reshape(args.n_tracks, -1, args.n_pitches)
-                    tracks = []
-                    for idx, (program, is_drum, track_name) in enumerate(zip(track_programs, is_drums, track_names)):
-                        pianoroll = np.pad(samples[idx] > 0.5, ((0, 0), (args.lowest_pitch, 128 - args.lowest_pitch - args.n_pitches)))
-                        tracks.append(
-                            pypianoroll.BinaryTrack(
-                                name=track_name,
-                                program=program,
-                                is_drum=is_drum,
-                                pianoroll=pianoroll
-                            )
+
+            if step % 500 == 0:
+                process_bar.set_description_str(f'd_loss = {round(d_loss, 2)}, g_loss = {round(g_loss, 2)}')
+                generator.eval()
+                sample_latent = torch.rand(args.batch_size, args.latent_dim)
+                with torch.no_grad():
+                    samples = generator(sample_latent).cpu().detach().numpy()
+                samples = samples.transpose(1, 0, 2, 3).reshape(args.n_tracks, -1, args.n_pitches)
+                tracks = []
+                for idx, (program, is_drum, track_name) in enumerate(zip(track_programs, is_drums, track_names)):
+                    pianoroll = np.pad(samples[idx] > 0.5, ((0, 0), (args.lowest_pitch, 128 - args.lowest_pitch - args.n_pitches)))
+                    tracks.append(
+                        pypianoroll.BinaryTrack(
+                            name=track_name,
+                            program=program,
+                            is_drum=is_drum,
+                            pianoroll=pianoroll
                         )
+                    )
+                m = Multitrack(
+                    tracks=tracks,
+                    tempo=tempo_array,
+                    resolution=args.beat_resolution
+                )
+                m.write(f'results/step_{step}_example.mid')
 
 
 if __name__ == '__main__':
@@ -141,6 +149,7 @@ if __name__ == '__main__':
     parser.add_argument('--lr', type=float, default='0.001', help='Value of learning rate')
     parser.add_argument('--batch_size', type=int, default=32, help='Batch size for training and generated the latent vector')
     parser.add_argument('--latent_dim', type=int, default=128, help='dim of latent vector')
+    parser.add_argument('--tempo', type=int, default=100, help='Value of tempo')
 
     opt = parser.parse_args()
 

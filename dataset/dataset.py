@@ -17,7 +17,7 @@ class MuseGANDataset(Dataset):
         return len(self.data)
 
     def __getitem__(self, idx):
-        return data[idx]
+        return self.data[idx]
 
 if __name__ == '__main__':
     data = MuseGANDataset(root_dir="../data/cleaned_data")
