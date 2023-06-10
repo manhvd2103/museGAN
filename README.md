@@ -12,4 +12,4 @@ Run: pip/pip3 install -r requirements.txt
 Run: python/python3 training.py
 
 # Generate music
-Run: python/python3 muse_gen_music.py
+Run: python/python3 musegan_gen_music.py
